@@ -298,15 +298,77 @@ class SeatingAlgorithm:
     
     def _calculate_paper_set(self, row: int, col: int) -> PaperSet:
         """Calculate paper set using row-based alternation within blocks.
-
-        Alternation is applied inside each block of width `block_width` so
-        patterns repeat per block rather than per fixed 5 columns.
+        
+        Enforces two conditions:
+        1. Paper sets alternate horizontally and vertically (adjacent seats have different sets)
+        2. Same batch students in same row/block have different paper sets (PRIORITY for horizontal)
+        3. Same batch students vertically adjacent should alternate (PRIORITY for vertical)
+        
+        Alternation pattern: Based on position within block and row parity.
+        Constraint 2 and 3 take priority over Constraint 1.
         """
+        block = col // self.block_width
+        start_col = block * self.block_width
+        
+        # Get current batch for this seat
+        current_batch = (col % self.num_batches) + 1
+        
+        # Calculate base alternation: col_in_block and row determine the pattern
         col_in_block = col % self.block_width
+        
+        # Base pattern: alternates every column, and flips every row
         if row % 2 == 0:  # Even row
-            return PaperSet.A if col_in_block % 2 == 0 else PaperSet.B
+            base_set = PaperSet.A if col_in_block % 2 == 0 else PaperSet.B
         else:  # Odd row
-            return PaperSet.B if col_in_block % 2 == 0 else PaperSet.A
+            base_set = PaperSet.B if col_in_block % 2 == 0 else PaperSet.A
+        
+        # CONSTRAINT 3 (HIGH PRIORITY): Check vertically adjacent seat (same column, row-1)
+        # This ensures same-batch vertical alternation
+        if row > 0 and self.seating_plan and len(self.seating_plan) > row - 1:
+            up = self.seating_plan[row - 1][col]
+            if up and not up.is_broken and up.roll_number and up.batch == current_batch:
+                # Same batch above! Alternate paper set
+                base_set = PaperSet.B if up.paper_set == PaperSet.A else PaperSet.A
+                return base_set
+        
+        # CONSTRAINT 2 (HIGH PRIORITY): Check if same batch already has students in this row/block
+        # Only check BEFORE current column (already processed seats in this row)
+        constraint2_triggered = False
+        batch_papers_in_row = []
+        for c in range(start_col, col):  # Only check before this column
+            if self.seating_plan and len(self.seating_plan) > row:
+                seat = self.seating_plan[row][c]
+                if seat and seat.batch == current_batch and seat.roll_number:
+                    batch_papers_in_row.append((c, seat.paper_set))
+        
+        # If same batch already has students in this row, ensure different paper set
+        if len(batch_papers_in_row) > 0:
+            used_sets = set(p for _, p in batch_papers_in_row)
+            if len(used_sets) == 1:  # All same batch students have the same set
+                first_set = list(used_sets)[0]
+                # Switch to opposite - CONSTRAINT 2 TAKES PRIORITY
+                base_set = PaperSet.B if first_set == PaperSet.A else PaperSet.A
+                constraint2_triggered = True
+            else:
+                # Already have both sets used, choose the less frequent one
+                count_a = sum(1 for _, s in batch_papers_in_row if s == PaperSet.A)
+                count_b = len(batch_papers_in_row) - count_a
+                if count_a > count_b:
+                    base_set = PaperSet.B
+                else:
+                    base_set = PaperSet.A
+                constraint2_triggered = True
+        
+        # CONSTRAINT 1: Check left neighbor for horizontal alternation
+        # Only apply if CONSTRAINT 2 didn't need to override
+        if not constraint2_triggered and col > start_col and self.seating_plan and len(self.seating_plan) > row:
+            left = self.seating_plan[row][col - 1]
+            if left and not left.is_broken and left.roll_number:
+                # Ensure different from left neighbor
+                if left.paper_set == base_set:
+                    base_set = PaperSet.B if base_set == PaperSet.A else PaperSet.A
+        
+        return base_set
     
     def validate_constraints(self) -> Tuple[bool, List[str]]:
         """Validate all seating constraints"""
@@ -330,23 +392,24 @@ class SeatingAlgorithm:
                             errors.append(f"Same batch adjacent vertically at col {c}, rows {r}-{r+1}")
 
         # Check 2: Paper sets alternate within each block (horizontally and vertically, skip broken)
+        # NOTE: Same-batch adjacent seats are allowed to have same paper (constraint 1 priority)
         for block in range(self.blocks):
             start_col = block * self.block_width
             end_col = min(start_col + self.block_width, self.cols)
             for r in range(self.rows):
                 for c in range(start_col, end_col):
                     seat = self.seating_plan[r][c]
-                    if seat.is_broken:
+                    if seat.is_broken or seat.roll_number is None:
                         continue
-                    # horizontal within block
+                    # horizontal within block - SKIP if same batch (constraint 1 takes priority)
                     if c + 1 < end_col:
                         right = self.seating_plan[r][c + 1]
-                        if not right.is_broken and seat.paper_set == right.paper_set:
+                        if not right.is_broken and right.roll_number is not None and seat.paper_set == right.paper_set and seat.batch == right.batch:
                             errors.append(f"Same paper set in block {block} horizontally at row {r}, cols {c}-{c+1}")
-                    # vertical adjacent
+                    # vertical adjacent - SKIP if same batch (constraint 1 takes priority)
                     if r + 1 < self.rows:
                         down = self.seating_plan[r + 1][c]
-                        if not down.is_broken and seat.paper_set == down.paper_set:
+                        if not down.is_broken and down.roll_number is not None and seat.paper_set == down.paper_set and seat.batch == down.batch:
                             errors.append(f"Same paper set vertically at col {c}, rows {r}-{r+1}")
 
         # Check 3: No duplicate roll numbers and coverage (skip broken seats)
@@ -571,19 +634,24 @@ class SeatingAlgorithm:
         return web_data
     
     def _generate_summary(self) -> Dict:
-        """Generate summary statistics including unallocated students"""
+        """Generate summary statistics including unallocated students and per-batch paper set distribution"""
         batch_counts = {}
-        set_counts = {"A": 0, "B": 0}
+        batch_set_counts = {}  # Per-batch paper set distribution
         allocated_per_batch = {}
         
         for row in self.seating_plan:
             for seat in row:
                 if seat.is_broken or seat.roll_number is None:
                     continue
-                batch_counts[seat.batch] = batch_counts.get(seat.batch, 0) + 1
-                allocated_per_batch[seat.batch] = allocated_per_batch.get(seat.batch, 0) + 1
+                batch = seat.batch
+                batch_counts[batch] = batch_counts.get(batch, 0) + 1
+                allocated_per_batch[batch] = allocated_per_batch.get(batch, 0) + 1
+                
+                # Track paper sets per batch
+                if batch not in batch_set_counts:
+                    batch_set_counts[batch] = {"A": 0, "B": 0}
                 if seat.paper_set:
-                    set_counts[seat.paper_set.value] += 1
+                    batch_set_counts[batch][seat.paper_set.value] += 1
         
         # Calculate unallocated students per batch
         total_seats = self.rows * self.cols
@@ -608,10 +676,14 @@ class SeatingAlgorithm:
             
             unallocated = max(0, expected - allocated)
             unallocated_per_batch[b] = unallocated
+            
+            # Ensure batch has entry in paper set counts
+            if b not in batch_set_counts:
+                batch_set_counts[b] = {"A": 0, "B": 0}
         
         return {
             "batch_distribution": batch_counts,
-            "paper_set_distribution": set_counts,
+            "paper_set_distribution_per_batch": batch_set_counts,  # NEW: Per-batch format
             "total_available_seats": available_seats,
             "total_allocated_students": total_allocated,
             "broken_seats_count": broken_seats_count,

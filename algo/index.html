@@ -393,73 +393,72 @@
             const rows = parseInt(rowsInput.value) || 0;
             const cols = parseInt(colsInput.value) || 0;
             const blockWidth = parseInt(blockWidthInput.value) || 3;
+            const totalSeats = rows * cols;
 
-            // Create a container for PDF with better block separation
+            // Create a container for PDF with full layout
             const printContainer = document.createElement('div');
             printContainer.style.backgroundColor = 'white';
-            printContainer.style.padding = '20px';
-            printContainer.style.fontFamily = 'Arial, sans-serif';
+            printContainer.style.fontFamily = 'Courier New, monospace';
+            printContainer.style.padding = '10px';
+            printContainer.style.minHeight = '100vh';
 
             // Add title
             const title = document.createElement('h2');
             title.innerText = 'Classroom Seating Arrangement';
             title.style.textAlign = 'center';
-            title.style.marginBottom = '10px';
-            title.style.fontSize = '18px';
+            title.style.marginBottom = '8px';
+            title.style.marginTop = '0px';
+            title.style.fontSize = '16px';
             title.style.fontWeight = 'bold';
+            title.style.padding = '0px';
             printContainer.appendChild(title);
 
             // Add metadata
             const info = document.createElement('p');
-            info.innerText = `Rows: ${rows} | Columns: ${cols} | Block Width: ${blockWidth} | Generated: ${new Date().toLocaleDateString()}`;
+            info.innerText = `${rows}R × ${cols}C | Block Width: ${blockWidth} | Generated: ${new Date().toLocaleDateString()}`;
             info.style.textAlign = 'center';
-            info.style.fontSize = '12px';
-            info.style.marginBottom = '15px';
+            info.style.fontSize = '11px';
+            info.style.marginBottom = '10px';
+            info.style.marginTop = '0px';
+            info.style.padding = '0px';
             printContainer.appendChild(info);
 
-            // Create grid container for blocks with proper spacing
+            // Create grid container that adapts to page
             const gridContainer = document.createElement('div');
             gridContainer.style.display = 'grid';
-            gridContainer.style.gridTemplateColumns = `repeat(${cols}, 65px)`;
-            gridContainer.style.gap = '4px';  // Gap between all seats
-            gridContainer.style.padding = '10px';
-            gridContainer.style.justifyContent = 'center';
-            gridContainer.style.backgroundColor = '#f5f5f5';  // Light background to show gaps
-            gridContainer.style.borderRadius = '4px';
+            gridContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            gridContainer.style.gap = '2px';
+            gridContainer.style.padding = '3px';
+            gridContainer.style.backgroundColor = '#f9f9f9';
+            gridContainer.style.border = '1px solid #333';
+            gridContainer.style.pageBreakInside = 'avoid';
 
             // Get all seats from the original chart
             const seats = Array.from(element.querySelectorAll('[class*="shadow-md"]'));
 
-            // Rebuild grid with proper block separation
+            // Rebuild grid with all seats visible
             seats.forEach((originalSeat, index) => {
                 const row = Math.floor(index / cols);
                 const col = index % cols;
 
-                // Create new seat element for PDF
+                // Create new seat element for PDF - compact but readable
                 const newSeat = document.createElement('div');
-                newSeat.style.width = '65px';
-                newSeat.style.height = '65px';
-                newSeat.style.border = '1px solid #333';  // Bold border
-                newSeat.style.backgroundColor = 'white';
+                newSeat.style.width = '100%';
+                newSeat.style.minHeight = '50px';
+                newSeat.style.border = '1px solid #333';
+                newSeat.style.backgroundColor = originalSeat.style.backgroundColor || 'white';
                 newSeat.style.display = 'flex';
                 newSeat.style.flexDirection = 'column';
                 newSeat.style.alignItems = 'center';
                 newSeat.style.justifyContent = 'center';
-                newSeat.style.fontSize = '10px';
-                newSeat.style.padding = '3px';
+                newSeat.style.padding = '2px';
                 newSeat.style.boxSizing = 'border-box';
                 newSeat.style.textAlign = 'center';
-                newSeat.style.fontWeight = 'bold';
-
-                // Add block separation: wider gap between blocks
-                if ((col) % blockWidth === 0 && col !== 0) {
-                    newSeat.style.marginLeft = '8px';
-                    newSeat.style.borderLeft = '2px solid #666';
-                }
-                if ((row) % blockWidth === 0 && row !== 0) {
-                    newSeat.style.marginTop = '8px';
-                    newSeat.style.borderTop = '2px solid #666';
-                }
+                newSeat.style.fontWeight = 'normal';
+                newSeat.style.fontSize = '9px';
+                newSeat.style.lineHeight = '1.1';
+                newSeat.style.wordBreak = 'break-word';
+                newSeat.style.overflow = 'hidden';
 
                 // Extract data from original seat
                 const batchDiv = originalSeat.querySelector('[class*="font-semibold"]');
@@ -470,15 +469,18 @@
                 const roll = rollDiv ? rollDiv.innerText : '';
                 const set = setDiv ? setDiv.innerText.replace('Set: ', '') : '';
 
-                // Build seat content with full roll number
-                let content = `<strong>B${batch}</strong><br/>`;
-                // Split roll number if it's long
-                if (roll && roll.length > 8) {
-                    content += `<span style="font-size: 9px; font-weight: bold; word-break: break-all;">${roll}</span>`;
+                // Build seat content with FULL roll number clearly visible
+                let content = '';
+                if (roll && roll !== 'UNALLOCATED') {
+                    // Full roll number on multiple lines if needed
+                    content += `<div style="font-size: 8px; font-weight: bold; line-height: 1; word-break: break-all;">${roll}</div>`;
+                    // Batch and Set
+                    content += `<div style="font-size: 7px; line-height: 1;">B${batch}|S${set}</div>`;
+                } else if (roll === 'UNALLOCATED') {
+                    content += `<div style="font-size: 8px; color: #999;">UNAL</div>`;
                 } else {
-                    content += `<span style="font-size: 11px; font-weight: bold;">${roll}</span>`;
+                    content += `<div style="font-size: 8px; color: #f00; font-weight: bold;">BROKEN</div>`;
                 }
-                content += `<br/><span style="font-size: 8px;">S${set}</span>`;
 
                 newSeat.innerHTML = content;
                 gridContainer.appendChild(newSeat);
@@ -486,16 +488,34 @@
 
             printContainer.appendChild(gridContainer);
 
-            // Generate PDF with landscape orientation for better spacing
+            // Determine page format - use larger for bigger grids
+            let orientation = 'landscape';
+            let format = 'a4';
+            let scale = 1;
+
+            if (cols > 12 || rows > 10) {
+                format = 'a3';
+                scale = 0.8;
+            } else if (cols > 10 || rows > 8) {
+                format = 'a4';
+                scale = 1;
+            }
+
+            // Generate PDF with optimized settings
             const opt = {
-                margin: 10,
+                margin: 5,
                 filename: `seating_arrangement_${new Date().getTime()}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { orientation: 'landscape', unit: 'mm', format: 'a4' }
+                html2canvas: { scale: 2, backgroundColor: '#ffffff' },
+                jsPDF: { orientation: orientation, unit: 'mm', format: format }
             };
 
-            html2pdf().set(opt).from(printContainer).save();
+            try {
+                html2pdf().set(opt).from(printContainer).save();
+            } catch (err) {
+                console.error('PDF generation error:', err);
+                alert('Error generating PDF. Check browser console.');
+            }
         });
 
         // Constraints checker button
