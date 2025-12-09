@@ -10,7 +10,6 @@ import ProfilePage from './pages/ProfilePage';
 import DashboardPage from './pages/DashboardPage';
 import UploadPage from './pages/UploadPage';
 import LayoutPage from './pages/LayoutPage';
-import AllocationPage from './pages/AllocationPage';
 
 const App = () => {
   const [currentPage, setCurrentPage] = useState('landing');
@@ -40,8 +39,6 @@ const App = () => {
         return <UploadPage showToast={showToast} />;
       case 'layout':
         return <LayoutPage showToast={showToast} />;
-      case 'allocation':
-        return <AllocationPage showToast={showToast} />;
       default:
         return <LandingPage setCurrentPage={setCurrentPage} />;
     }

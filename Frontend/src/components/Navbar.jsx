@@ -10,7 +10,6 @@ const Navbar = ({ currentPage, setCurrentPage }) => {
     { name: 'Dashboard', page: 'dashboard' },
     { name: 'Upload', page: 'upload' },
     { name: 'Layout', page: 'layout' },
-    { name: 'Allocation', page: 'allocation' },
     { name: 'Profile', page: 'profile' }
   ] : [];
 
