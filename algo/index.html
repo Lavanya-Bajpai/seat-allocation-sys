@@ -174,6 +174,9 @@
     </div>
 
     <script>
+        // Store seating data for PDF generation
+        let currentSeatingData = null;
+
         const rowsInput = document.getElementById('rows');
         const colsInput = document.getElementById('cols');
         const numBatchesInput = document.getElementById('num-batches');
@@ -266,6 +269,10 @@
                     downloadPdfBtn.disabled = true;
                     return;
                 }
+
+                // Store complete data for PDF generation via API
+                currentSeatingData = data;
+
                 // render seating using server-provided roll_number and metadata
                 const meta = data.metadata || { rows: rows, cols: cols, block_width: blockWidth };
                 const seating = data.seating || [];
@@ -388,212 +395,44 @@
         generateSeatingChart();
 
         // PDF download functionality - PROFESSIONAL STANDARDIZED FORMAT
-        downloadPdfBtn.addEventListener('click', function () {
-            const element = document.getElementById('seating-chart');
-            const rows = parseInt(rowsInput.value) || 0;
-            const cols = parseInt(colsInput.value) || 0;
-            const blockWidth = parseInt(blockWidthInput.value) || 3;
-            const numBatches = parseInt(numBatchesInput.value) || 1;
-
-            if (rows === 0 || cols === 0) {
-                alert('Please enter valid rows and columns');
+        downloadPdfBtn.addEventListener('click', async function () {
+            if (!currentSeatingData) {
+                alert('Please generate seating first');
                 return;
             }
 
             try {
-                // ===== CALCULATE PDF DIMENSIONS =====
-                // Page dimensions (A4: 210x297mm, A3: 297x420mm)
-                const A4_WIDTH = 210, A4_HEIGHT = 297;
-                const A3_WIDTH = 297, A3_HEIGHT = 420;
-                const MARGIN = 8; // mm
-                const HEADER_HEIGHT = 20; // mm
-                const FOOTER_HEIGHT = 10; // mm
-                const CELL_SIZE = 14; // mm (fixed 14x14mm cells)
-                const CELL_GAP = 0.5; // mm
+                downloadPdfBtn.disabled = true;
+                downloadPdfBtn.textContent = 'Generating PDF...';
 
-                // Available space for grid
-                let pageWidth = A4_WIDTH;
-                let pageHeight = A4_HEIGHT;
-                let orientation = 'portrait';
-                let pdfFormat = 'a4';
-                let scale = 2;
-
-                // Calculate required grid height
-                const gridWidth = (cols * CELL_SIZE) + ((cols - 1) * CELL_GAP);
-                const gridHeight = (rows * CELL_SIZE) + ((rows - 1) * CELL_GAP);
-                const requiredWidth = gridWidth + (2 * MARGIN);
-                const requiredHeight = gridHeight + HEADER_HEIGHT + FOOTER_HEIGHT + (3 * MARGIN);
-
-                // Select appropriate format and orientation
-                if (requiredWidth > A4_WIDTH || requiredHeight > A4_HEIGHT) {
-                    if (requiredWidth > A4_WIDTH) {
-                        orientation = 'landscape';
-                        pageWidth = A4_HEIGHT;
-                        pageHeight = A4_WIDTH;
-                    }
-
-                    if (requiredWidth > pageWidth - (2 * MARGIN) || requiredHeight > pageHeight - (2 * MARGIN)) {
-                        pdfFormat = 'a3';
-                        pageWidth = orientation === 'landscape' ? A3_HEIGHT : A3_WIDTH;
-                        pageHeight = orientation === 'landscape' ? A3_WIDTH : A3_HEIGHT;
-                        scale = 1.5;
-                    }
-                }
-
-                // ===== CREATE PRINT CONTAINER =====
-                const printContainer = document.createElement('div');
-                printContainer.style.width = pageWidth + 'mm';
-                printContainer.style.minHeight = pageHeight + 'mm';
-                printContainer.style.backgroundColor = '#ffffff';
-                printContainer.style.fontFamily = 'Arial, sans-serif';
-                printContainer.style.padding = MARGIN + 'mm';
-                printContainer.style.boxSizing = 'border-box';
-                printContainer.style.margin = '0';
-                printContainer.style.overflow = 'visible';
-
-                // ===== HEADER SECTION =====
-                const headerDiv = document.createElement('div');
-                headerDiv.style.marginBottom = '8mm';
-                headerDiv.style.borderBottom = '2px solid #333';
-                headerDiv.style.paddingBottom = '4mm';
-                headerDiv.style.textAlign = 'center';
-
-                const titleDiv = document.createElement('div');
-                titleDiv.style.fontSize = '18px';
-                titleDiv.style.fontWeight = 'bold';
-                titleDiv.style.marginBottom = '3mm';
-                titleDiv.style.color = '#000';
-                titleDiv.innerHTML = 'CLASSROOM SEATING ARRANGEMENT';
-                headerDiv.appendChild(titleDiv);
-
-                // Info grid
-                const infoGrid = document.createElement('div');
-                infoGrid.style.display = 'grid';
-                infoGrid.style.gridTemplateColumns = 'repeat(4, 1fr)';
-                infoGrid.style.gap = '4mm';
-                infoGrid.style.fontSize = '9px';
-
-                const createInfoCell = (label, value) => {
-                    const cell = document.createElement('div');
-                    cell.style.textAlign = 'center';
-                    cell.innerHTML = `<div style="font-weight: bold; margin-bottom: 1mm;">${label}</div><div>${value}</div>`;
-                    return cell;
-                };
-
-                infoGrid.appendChild(createInfoCell('Date', new Date().toLocaleDateString('en-IN')));
-                infoGrid.appendChild(createInfoCell('Rows', rows.toString()));
-                infoGrid.appendChild(createInfoCell('Columns', cols.toString()));
-                infoGrid.appendChild(createInfoCell('Block', blockWidth.toString()));
-                headerDiv.appendChild(infoGrid);
-                printContainer.appendChild(headerDiv);
-
-                // ===== MAIN SEATING GRID =====
-                const gridContainer = document.createElement('div');
-                gridContainer.style.display = 'inline-grid';
-                gridContainer.style.gridTemplateColumns = `repeat(${cols}, ${CELL_SIZE}mm)`;
-                gridContainer.style.gap = CELL_GAP + 'mm';
-                gridContainer.style.margin = '0';
-                gridContainer.style.padding = '0';
-                gridContainer.style.width = 'fit-content';
-
-                // Get seats from original chart
-                const seats = Array.from(element.querySelectorAll('[class*="shadow-md"]'));
-
-                // ===== RENDER SEATS WITH FIXED DIMENSIONS =====
-                seats.forEach((originalSeat) => {
-                    const newSeat = document.createElement('div');
-                    newSeat.style.width = CELL_SIZE + 'mm';
-                    newSeat.style.height = CELL_SIZE + 'mm';
-                    newSeat.style.border = '0.75px solid #666';
-                    newSeat.style.backgroundColor = originalSeat.style.backgroundColor || '#ffffff';
-                    newSeat.style.display = 'flex';
-                    newSeat.style.flexDirection = 'column';
-                    newSeat.style.alignItems = 'center'; 
-                    newSeat.style.justifyContent = 'center';
-                    newSeat.style.padding = '0.8mm';
-                    newSeat.style.boxSizing = 'border-box';
-                    newSeat.style.textAlign = 'center';
-                    newSeat.style.overflow = 'hidden';
-                    newSeat.style.fontSize = '7px';
-                    newSeat.style.lineHeight = '1';
-
-                    // Extract seat data
-                    const batchDiv = originalSeat.querySelector('[class*="font-semibold"]');
-                    const rollDiv = originalSeat.querySelector('[class*="font-bold"]');
-                    const setDiv = originalSeat.querySelector('[class*="font-medium"]');
-
-                    const batch = batchDiv ? batchDiv.innerText.replace('Batch ', '') : '?';
-                    const roll = rollDiv ? rollDiv.innerText.trim() : '';
-                    const set = setDiv ? setDiv.innerText.replace('Set: ', '').trim() : '?';
-
-                    let content = '';
-                    if (roll && roll !== 'UNALLOCATED' && roll !== 'None' && roll !== '') {
-                        content = `<div style="font-weight: bold; font-size: 6px; word-break: break-all; width: 100%; margin-bottom: 0.3mm;">${roll}</div>`;
-                        content += `<div style="font-size: 5px; color: #444;">B${batch}|S${set}</div>`;
-                    } else if (roll === 'UNALLOCATED') {
-                        content = `<div style="font-size: 5px; color: #999; font-style: italic;">UNALLOC</div>`;
-                    } else {
-                        content = `<div style="font-size: 5px; color: #d00; font-weight: bold;">BROKEN</div>`;
-                    }
-                    newSeat.innerHTML = content;
-                    gridContainer.appendChild(newSeat);
+                // Call backend API to generate PDF
+                const response = await fetch('/api/generate-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentSeatingData)
                 });
 
-                printContainer.appendChild(gridContainer);
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'PDF generation failed');
+                }
 
-                // ===== FOOTER SECTION =====
-                const footerDiv = document.createElement('div');
-                footerDiv.style.marginTop = '8mm';
-                footerDiv.style.paddingTop = '3mm';
-                footerDiv.style.borderTop = '1px solid #ddd';
-                footerDiv.style.fontSize = '8px';
-                footerDiv.style.color = '#666';
-                footerDiv.style.textAlign = 'center';
-                footerDiv.innerHTML = `Generated: ${new Date().toLocaleString('en-IN')} | Total Seats: ${rows * cols}`;
-                printContainer.appendChild(footerDiv);
-
-                // ===== PDF GENERATION WITH OPTIMIZED SETTINGS =====
-                const pdfOptions = {
-                    margin: [MARGIN, MARGIN, MARGIN, MARGIN],
-                    filename: `seating_${rows}x${cols}_${Date.now()}.pdf`,
-                    image: {
-                        type: 'png',  // PNG for better text clarity than JPEG
-                        quality: 1
-                    },
-                    html2canvas: {
-                        scale: scale,
-                        useCORS: true,
-                        allowTaint: true,
-                        backgroundColor: '#ffffff',
-                        logging: false,
-                        windowHeight: pageHeight * 3.78 // Convert mm to pixels (approx 3.78 px/mm)
-                    },
-                    jsPDF: {
-                        orientation: orientation,
-                        unit: 'mm',
-                        format: pdfFormat,
-                        compress: false,  // Disable compression to preserve text clarity
-                        precision: 16
-                    }
-                };
-
-                // Generate PDF
-                html2pdf()
-                    .set(pdfOptions)
-                    .from(printContainer)
-                    .save()
-                    .then(() => {
-                        // Clean up
-                        console.log('PDF generated successfully');
-                    })
-                    .catch(err => {
-                        console.error('PDF generation error:', err);
-                        alert('Error generating PDF:\n' + err.message);
-                    });
+                // Download PDF file
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `seating_${Date.now()}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
 
             } catch (err) {
-                console.error('PDF process error:', err);
-                alert('Error in PDF process:\n' + err.message);
+                alert('Error: ' + err.message);
+            } finally {
+                downloadPdfBtn.disabled = false;
+                downloadPdfBtn.textContent = 'Download PDF';
             }
         });
 

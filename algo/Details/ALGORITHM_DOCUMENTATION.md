@@ -528,6 +528,175 @@ Error: 500
   {"error": "...exception message..."}
 ```
 
+### 4. **POST `/api/generate-pdf`** - Generate Seating PDF Export
+
+Generates a professional PDF file from seating data. This endpoint takes the complete seating JSON response and creates a reportlab-generated PDF with formatted grid, colors, and metadata.
+
+#### Request Format
+```
+POST /api/generate-pdf
+Content-Type: application/json
+
+{
+  "metadata": {
+    "rows": 8,
+    "cols": 10,
+    "num_batches": 3,
+    ...
+  },
+  "seating": [
+    [
+      {
+        "position": "A1",
+        "batch": 1,
+        "paper_set": "A",
+        "roll_number": "BTCS24O1001",
+        "is_broken": false,
+        "is_unallocated": false,
+        "color": "#DBEAFE",
+        ...
+      },
+      ...
+    ],
+    ...
+  ],
+  "summary": {...},
+  "validation": {...},
+  "constraints_status": {...}
+}
+```
+
+#### Response Format
+```
+HTTP/1.1 200 OK
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="seating_1765558002.pdf"
+
+[Binary PDF Data]
+```
+
+#### Error Responses
+```
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+
+{"error": "Invalid seating data"}
+
+HTTP/1.1 500 Internal Server Error
+Content-Type: application/json
+
+{"error": "PDF generation failed: <exception message>"}
+```
+
+#### Integration Pattern
+
+**Step 1: Generate Seating (from `/api/generate-seating`)**
+```python
+import requests
+
+response = requests.post('http://localhost:5000/api/generate-seating', 
+    json={
+        "rows": 8,
+        "cols": 10,
+        "num_batches": 3,
+        "block_width": 2
+    }
+)
+seating_data = response.json()
+```
+
+**Step 2: Generate PDF with Seating Data**
+```python
+# Pass complete response to PDF endpoint
+pdf_response = requests.post('http://localhost:5000/api/generate-pdf',
+    json=seating_data  # Use complete seating response
+)
+
+# Save PDF to file
+with open('seating_plan.pdf', 'wb') as f:
+    f.write(pdf_response.content)
+```
+
+#### Frontend Integration (JavaScript)
+
+**Store Seating Data:**
+```javascript
+let currentSeatingData = null;  // Global variable
+
+async function generateSeating() {
+  const response = await fetch('/api/generate-seating', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      rows: 8,
+      cols: 10,
+      num_batches: 3,
+      block_width: 2
+    })
+  });
+  
+  currentSeatingData = await response.json();  // Store response
+  displayGrid(currentSeatingData);
+}
+```
+
+**Download PDF:**
+```javascript
+async function downloadPDF() {
+  if (!currentSeatingData) {
+    alert('No seating data. Generate seating first.');
+    return;
+  }
+  
+  const response = await fetch('/api/generate-pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(currentSeatingData)  // Send stored data
+  });
+  
+  // Create blob and download
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'seating_plan.pdf';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+```
+
+#### PDF Generation Module
+
+**Module: `pdf_gen.py`**
+
+The PDF generation uses Reportlab for professional rendering. Key features:
+
+| Feature | Details |
+|---------|---------|
+| Library | Reportlab (pure Python, no external PDFs needed) |
+| Page Size | Custom 304mm × 235mm |
+| Grid Rendering | Formatted table with colors and text |
+| Header | Institution banner image with fallback |
+| Footer | Coordinator name and designation |
+| Color Support | Full RGB + hex color support |
+| Metadata | Rows, columns, batches, statistics |
+
+**Key Functions:**
+
+- `process_seating_data(json_data)` - Converts JSON seating array to rendering matrix
+- `create_seating_pdf(filename, data=None)` - Main function, generates PDF
+- `header_and_footer(c, doc)` - Renders custom header/footer with banner
+
+**Dependencies:**
+```python
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import cm, mm
+from reportlab.pdfgen import canvas
+```
+
 ---
 
 ## Data Models
@@ -1087,6 +1256,6 @@ For issues, questions, or feature requests:
 
 ---
 
-**Document Version**: 2.1 (Added 3-Tier Priority Paper Set System)  
-**Last Updated**: November 19, 2025  
+**Document Version**: 2.2 (Added Backend PDF Generation via /api/generate-pdf endpoint with Reportlab)  
+**Last Updated**: December 12, 2025  
 **Maintained By**: SAS Development Team 

@@ -255,31 +255,154 @@ This ensures same-batch students get different papers when vertically or horizon
 
 ---
 
-## PDF Export Flow
+## PDF Export Flow (Backend Integration)
+
+### Updated Architecture with PDF Generation
 
 ```mermaid
-graph LR
-    A["📥 Frontend triggers<br/>PDF download"]
-    B["📋 Get seating chart<br/>HTML"]
-    C["📦 Create new<br/>PDF container"]
-    D["🎨 Copy seat elements<br/>Apply print styling"]
-    E["🔧 Configure PDF options<br/>landscape/A4/margins"]
-    F["⚙️ html2pdf.js<br/>generates PDF"]
-    G["💾 Download PDF<br/>seating_arrangement_*.pdf"]
+graph TB
+    subgraph Client["🖥️ CLIENT LAYER"]
+        HTML["HTML Form Inputs"]
+        GRID["Seating Grid Display"]
+        PDF_BTN["Download PDF Button"]
+    end
+       
+    subgraph API["⚙️ API LAYER - Flask"]
+        GEN[" POST /api/generate-seating"]
+        PDFAPI["POST /api/generate-pdf"]
+    end
     
-    A --> B --> C --> D --> E --> F --> G
+    subgraph Backend["🔧 BACKEND LAYER"]
+        SA["SeatingAlgorithm"]
+        PDFGEN["pdf_gen Module"]
+    end
     
-    style A fill:#e3f2fd
-    style G fill:#c8e6c9
+    subgraph Output["� OUTPUT"]
+        JSOND["JSON Response"]
+        PDFF["PDF File"]
+    end
+    
+    Client -->|Generate seating| GEN
+    GEN -->|Process| SA
+    SA -->|Return JSON| JSOND
+    JSOND -->|Display grid| GRID
+    GRID -->|Click download| PDF_BTN
+    PDF_BTN -->|Send complete JSON| PDFAPI
+    PDFAPI -->|Convert to PDF| PDFGEN
+    PDFGEN -->|Generate| PDFF
+    PDFF -->|Browser download| Client
 ```
 
-| Configuration | Value | Purpose |
-|---|---|---|
-| Filename | `seating_arrangement_[timestamp].pdf` | Unique identification |
-| Orientation | `landscape` | Better for wide grids |
-| Format | `a4` | Standard paper size |
-| Margin | `10` | Printable area |
-| Scale | `2` | High resolution |
+### PDF Generation Data Flow
+
+```mermaid
+flowchart TD
+    A["📥 User clicks<br/>Download PDF"]
+    B["� currentSeatingData variable<br/>contains complete JSON"]
+    C["📤 POST /api/generate-pdf<br/>with seating JSON"]
+    D["📥 Backend receives<br/>complete seating data"]
+    E["🔄 process_seating_data()<br/>Convert JSON to matrix"]
+    F["📊 Create Table structure<br/>with colors & text"]
+    G["🎨 Apply cell styling<br/>Batch colors, text formatting"]
+    H["� Reportlab creates PDF<br/>with header/footer"]
+    I["💾 PDF file generated<br/>in seat_plan_generated/"]
+    J["📥 Send file to browser<br/>Content-Type: application/pdf"]
+    K["� Browser downloads<br/>seating_TIMESTAMP.pdf"]
+    
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K
+    
+    style A fill:#e3f2fd
+    style E fill:#fff9c4
+    style H fill:#c8e6c9
+    style K fill:#f8bbd0
+```
+
+### System Architecture (4 Layers)
+
+```mermaid
+graph TB
+    subgraph Layer1["Layer 1: PRESENTATION<br/>(index.html - JavaScript)"]
+        F1["Form: rows, cols, batches"]
+        F2["Display: Grid, summary"]
+        F3["Action: Generate, Download PDF"]
+    end
+    
+    subgraph Layer2["Layer 2: API<br/>(app.py - Flask)"]
+        A1["POST /api/generate-seating"]
+        A2["POST /api/generate-pdf"]
+        A3["GET /api/constraints-status"]
+    end
+    
+    subgraph Layer3["Layer 3: BUSINESS LOGIC<br/>(algo.py + pdf_gen.py)"]
+        B1["SeatingAlgorithm class"]
+        B2["Constraint validation"]
+        B3["PDF generation module"]
+    end
+    
+    subgraph Layer4["Layer 4: DATA<br/>(JSON, PDF files)"]
+        D1["Seating JSON"]
+        D2["PDF output"]
+    end
+    
+    Layer1 -->|HTTP| Layer2
+    Layer2 -->|Process| Layer3
+    Layer3 -->|Generate/Validate| Layer4
+    Layer4 -->|Return| Layer2
+    Layer2 -->|Response| Layer1
+```
+
+### PDF Module Integration
+
+| Module | File | Purpose | Key Functions |
+|--------|------|---------|---|
+| **Algorithm** | `algo.py` | Seat allocation logic | `generate_seating()`, `validate_constraints()` |
+| **API** | `app.py` | HTTP endpoints | `/api/generate-seating`, `/api/generate-pdf` |
+| **PDF Generation** | `pdf_gen.py` | Reportlab PDF creation | `create_seating_pdf()`, `process_seating_data()` |
+| **Frontend** | `index.html` | User interface | Form input, grid display, PDF download |
+
+### Data Flow: Seating to PDF
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Frontend as index.html
+    participant API as app.py
+    participant Algorithm as algo.py
+    participant PDFGen as pdf_gen.py
+    participant FileSystem as File Storage
+    
+    User->>Frontend: Fill form, click Generate
+    Frontend->>API: POST /api/generate-seating
+    API->>Algorithm: Create & call generate_seating()
+    Algorithm->>API: Return seating JSON
+    API->>Frontend: Return JSON response
+    Frontend->>Frontend: Store in currentSeatingData
+    Frontend->>Frontend: Display grid and summary
+    
+    User->>Frontend: Click Download PDF
+    Frontend->>API: POST /api/generate-pdf + JSON
+    API->>PDFGen: create_seating_pdf(filename, data)
+    PDFGen->>PDFGen: process_seating_data(json)
+    PDFGen->>PDFGen: Build PDF with colors/text
+    PDFGen->>FileSystem: Write PDF file
+    PDFGen->>API: Return filepath
+    API->>Frontend: send_file() with PDF
+    Frontend->>User: Download PDF
+```
+
+### PDF Output Specifications
+
+| Aspect | Specification |
+|--------|---|
+| Library | Reportlab (pure Python) |
+| Page Size | Custom 304mm × 235mm (landscape optimized) |
+| Grid Format | Table with colored cells |
+| Cell Content | Roll number + Paper set (e.g., "BTCS24O1001\nSET A") |
+| Colors | Batch colors + red for broken + gray for unallocated |
+| Header | Institution banner image (with text fallback) |
+| Footer | Coordinator name and designation |
+| Filename | `seating_TIMESTAMP.pdf` |
+| Location | `seat_plan_generated/` directory |
 
 ---
 
@@ -502,6 +625,6 @@ graph TB
 
 ---
 
-**Document Version**: 2.1 (Added 3-Tier Priority Paper Set System)  
-**Last Updated**: November 19, 2025  
+**Document Version**: 2.2 (Added Backend PDF Generation Architecture with 4-Layer System)  
+**Last Updated**: December 12, 2025  
 **Maintained By**: SAS Development Team 

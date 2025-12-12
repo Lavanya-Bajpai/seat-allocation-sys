@@ -701,7 +701,22 @@ def index():
 
 # -------------------------------------------------------------------
 # Run
-# -------------------------------------------------------------------
+# -------------------------------------------------------------------@app.route('/api/generate-pdf', methods=['POST'])
+def generate_pdf():
+    """Generate PDF from seating data"""
+    try:
+        data = request.get_json()
+        if not data or 'seating' not in data:
+            return jsonify({"error": "Invalid seating data"}), 400
+        
+        filename = f"seat_plan_generated/seating_{int(__import__('time').time())}.pdf"
+        filepath = create_seating_pdf(filename=filename, data=data)
+        
+        return send_file(filepath, as_attachment=True, download_name=filename)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
     print("Allocation + Auth server running at http://127.0.0.1:5000")
     app.run(debug=True, port=5000)

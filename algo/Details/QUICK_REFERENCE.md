@@ -201,6 +201,153 @@ const status = await fetch('/api/constraints-status', {
 console.log(status.total_satisfied, "/", status.total_applied);
 ```
 
+### Workflow 6: Generate Seating and Export to PDF (NEW - Backend PDF Generation)
+
+**Step 1: Generate seating and store response**
+```javascript
+// Global variable to store seating data
+let currentSeatingData = null;
+
+async function generateSeating() {
+  const response = await fetch('/api/generate-seating', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      rows: 8,
+      cols: 10,
+      num_batches: 3,
+      block_width: 2,
+      batch_student_counts: "1:10,2:8,3:7"
+    })
+  });
+  
+  // Store complete response for PDF generation
+  currentSeatingData = await response.json();
+  
+  // Display seating grid
+  displayGrid(currentSeatingData.seating);
+  displaySummary(currentSeatingData.summary);
+  
+  return currentSeatingData;
+}
+```
+
+**Step 2: Download PDF using stored data**
+```javascript
+async function downloadPDF() {
+  // Verify we have seating data
+  if (!currentSeatingData) {
+    alert('No seating data. Generate seating first.');
+    return;
+  }
+  
+  try {
+    // Send complete seating JSON to PDF endpoint
+    const response = await fetch('/api/generate-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(currentSeatingData)  // Send stored data
+    });
+    
+    if (!response.ok) {
+      throw new Error(`PDF generation failed: ${response.statusText}`);
+    }
+    
+    // Create blob and download
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `seating_plan_${Date.now()}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    console.log('PDF downloaded successfully');
+  } catch (error) {
+    console.error('PDF download error:', error);
+    alert('Failed to generate PDF: ' + error.message);
+  }
+}
+```
+
+**Complete HTML Example:**
+```html
+<div>
+  <button onclick="generateSeating()">Generate Seating</button>
+  <button onclick="downloadPDF()" id="pdf-btn">Download PDF</button>
+</div>
+
+<div id="seating-grid"></div>
+<div id="summary"></div>
+
+<script>
+let currentSeatingData = null;
+
+async function generateSeating() {
+  const response = await fetch('/api/generate-seating', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      rows: 8,
+      cols: 10,
+      num_batches: 3,
+      block_width: 2
+    })
+  });
+  
+  currentSeatingData = await response.json();
+  document.getElementById('pdf-btn').disabled = false;
+  console.log('Seating generated. PDF download ready.');
+}
+
+async function downloadPDF() {
+  if (!currentSeatingData) return;
+  
+  const response = await fetch('/api/generate-pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(currentSeatingData)
+  });
+  
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'seating_plan.pdf';
+  link.click();
+}
+</script>
+```
+
+**Python Backend Example:**
+```python
+import requests
+
+# Step 1: Generate seating
+response = requests.post('http://localhost:5000/api/generate-seating', 
+    json={
+        "rows": 8,
+        "cols": 10,
+        "num_batches": 3,
+        "block_width": 2
+    }
+)
+seating_data = response.json()
+
+# Step 2: Generate PDF with seating data
+pdf_response = requests.post('http://localhost:5000/api/generate-pdf',
+    json=seating_data  # Pass complete response
+)
+
+# Save PDF
+with open('seating_plan.pdf', 'wb') as f:
+    f.write(pdf_response.content)
+
+print("PDF saved: seating_plan.pdf")
+```
+
 ---
 
 ## Rendering Examples
@@ -638,6 +785,6 @@ graph TB
 ---
 
 **For complete documentation, see `ALGORITHM_DOCUMENTATION.md`**  
-**Documentation Version**: 2.1 (Added 3-Tier Priority Paper Set Examples)  
-**Last Updated**: November 19, 2025  
+**Documentation Version**: 2.2 (Added Workflow 6: Backend PDF Generation)  
+**Last Updated**: December 12, 2025  
 **Maintained By**: SAS Development Team 

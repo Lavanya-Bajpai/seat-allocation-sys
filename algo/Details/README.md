@@ -282,4 +282,5 @@ This documentation suite is designed to make your development experience smooth 
 **Location**: `/home/blazex/Documents/git/seat-allocation-sys/algo/Details/`  
 **For Questions**: Refer to VISUAL_INDEX.md for navigation.  
 **Maintained By**: SAS Development Team  
-**Documentation Version**: 2.1 (3-Tier Priority Constraint System)  
+**Documentation Version**: 2.2 (Backend PDF Generation + 4-Layer Architecture)  
+**Last Updated**: December 12, 2025  
