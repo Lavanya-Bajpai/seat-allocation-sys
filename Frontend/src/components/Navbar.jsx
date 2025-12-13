@@ -16,6 +16,7 @@ const Navbar = ({ currentPage, setCurrentPage }) => {
   const navItems = user ? [
     { name: 'Dashboard', page: 'dashboard' },
     { name: 'Upload', page: 'upload' },
+    { name: 'Allocation', page: 'allocation' },
     { name: 'Layout', page: 'layout' },
     { name: 'Profile', page: 'profile' },
     { name: 'Feedback', page: 'feedback'},

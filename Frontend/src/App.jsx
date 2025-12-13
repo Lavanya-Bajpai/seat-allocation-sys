@@ -11,6 +11,7 @@ import ProfilePage from './pages/ProfilePage';
 import DashboardPage from './pages/DashboardPage';
 import UploadPage from './pages/UploadPage';
 import LayoutPage from './pages/LayoutPage';
+import Allocation from './pages/Allocation';
 import FeedbackPage from './pages/FeedbackPage';
 import AboutusPage from './pages/AboutusPage';
 
@@ -35,11 +36,13 @@ const App = () => {
       case 'signup':
         return <SignupPage setCurrentPage={setCurrentPage} showToast={showToast} />;
       case 'profile':
-        return <ProfilePage showToast={showToast} />;
+        return <ProfilePage showToast={showToast} setCurrentPage={setCurrentPage} />;
       case 'dashboard':
         return <DashboardPage setCurrentPage={setCurrentPage} />;
       case 'upload':
         return <UploadPage showToast={showToast} />;
+      case 'allocation':
+        return <Allocation showToast={showToast} />;
       case 'layout':
         return <LayoutPage showToast={showToast} />;
       case 'feedback':

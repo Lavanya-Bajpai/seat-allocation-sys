@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, LogOut, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const ProfilePage = ({ showToast }) => {
+const ProfilePage = ({ showToast, setCurrentPage }) => {
   const { user, logout, updateProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,6 +43,7 @@ const ProfilePage = ({ showToast }) => {
   const handleLogout = async () => {
     await logout();
     showToast('Logged out successfully', 'success');
+    setCurrentPage('landing');
   };
 
   if (!user) {

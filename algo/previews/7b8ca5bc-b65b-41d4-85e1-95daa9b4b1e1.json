@@ -1,0 +1,54 @@
+{
+  "batch_id": "7b8ca5bc-b65b-41d4-85e1-95daa9b4b1e1",
+  "batch_name": "CSE",
+  "mode": 2,
+  "source": "BTCS_Students.xlsx",
+  "rows_total": 10,
+  "rows_extracted": 10,
+  "warnings": [],
+  "errors": [],
+  "data": {
+    "CSE": [
+      {
+        "name": "Pihu Mehta",
+        "enrollmentNo": "BTCS2401001"
+      },
+      {
+        "name": "Arnav Gupta",
+        "enrollmentNo": "BTCS2401002"
+      },
+      {
+        "name": "Diya Sharma",
+        "enrollmentNo": "BTCS2401003"
+      },
+      {
+        "name": "Avni Nair",
+        "enrollmentNo": "BTCS2401004"
+      },
+      {
+        "name": "Yuvan Das",
+        "enrollmentNo": "BTCS2401005"
+      },
+      {
+        "name": "Isha Patel",
+        "enrollmentNo": "BTCS2401006"
+      },
+      {
+        "name": "Riya Joshi",
+        "enrollmentNo": "BTCS2401007"
+      },
+      {
+        "name": "Arjun Reddy",
+        "enrollmentNo": "BTCS2401008"
+      },
+      {
+        "name": "Aarohi Pandey",
+        "enrollmentNo": "BTCS2401009"
+      },
+      {
+        "name": "Reyansh Nair",
+        "enrollmentNo": "BTCS2401010"
+      }
+    ]
+  }
+}
