@@ -1,6 +1,6 @@
 import React from 'react';
 
-const FeedbackPage = () => {
+const FeedbackPage = ({ showToast }) => {
     // State management for form fields
     const [issueType, setIssueType] = React.useState('Visual/Aesthetic Issue'); 
     const [priority, setPriority] = React.useState('Medium Priority');

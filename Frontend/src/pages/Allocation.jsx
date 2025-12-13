@@ -31,7 +31,7 @@ const defaultColors = [
   "bg-slate-100",
 ];
 
-const AllocationPage = () => {
+const AllocationPage = ({ showToast }) => {
   const [rows, setRows] = useState(8);
   const [cols, setCols] = useState(10);
   const [numBatches, setNumBatches] = useState(3);

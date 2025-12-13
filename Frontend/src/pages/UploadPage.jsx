@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Upload, Loader2 } from "lucide-react";
 
 /**
  * UploadPage.jsx
@@ -11,7 +12,7 @@ import React, { useState, useEffect, useRef } from "react";
  * Tailwind-based styling.
  */
 
-const UploadPage = () => {
+const UploadPage = ({ showToast }) => {
   const [file, setFile] = useState(null);
   const [mode, setMode] = useState("2"); // "2" -> Name+Enrollment, "1" -> Enrollment-only
   const [batchName, setBatchName] = useState("CSE");
@@ -124,6 +125,18 @@ const UploadPage = () => {
       fileInputRef.current.value = "";
     }
     setFile(null);
+  }
+
+  function handleFileChange(e) {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setUploadError(null);
+    }
+  }
+
+  function handleUpload() {
+    uploadAndPreview();
   }
 
   return (
