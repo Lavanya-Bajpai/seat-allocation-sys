@@ -16,7 +16,7 @@ const TeamMemberCard = ({ initials, name, role, description }) => (
 );
 
 // --- The Main About Us Component ---
-const AboutUs = () => {
+const AboutUs = ({ showToast }) => {
     const teamMembers = [
         { initials: "JL", name: "Javier Lopez", role: "Project Lead", description: "Oversaw the entire system architecture and core constraints definition." },
         { initials: "AR", name: "Anjali Rao", role: "Lead Developer", description: "Primary engineer for the back-end allocation algorithm and API stability." },

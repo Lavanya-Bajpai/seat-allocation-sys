@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-export default function LayoutPage() {
+export default function LayoutPage({ showToast }) {
 
   useEffect(() => {
     // When component loads, attach listeners & initial generation
