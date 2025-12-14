@@ -1,4 +1,7 @@
+# pdf_gen/pdf_generation.py (UPDATED VERSION )
 import json
+import os
+import hashlib
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet
@@ -6,8 +9,57 @@ from reportlab.lib.units import cm, mm
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase.pdfmetrics import stringWidth
 
-IMAGE_PATH = "data/banner.png"
+# Import template manager with proper error handling
+try:
+    from .template_manager import template_manager
+except ImportError:
+    try:
+        from template_manager import template_manager
+    except ImportError:
+        print("⚠️ Template manager not available, using fallback mode")
+        template_manager = None
+
+CACHE_DIR = "pdf_gen/seat_plan_generated"
+IMAGE_PATH = "pdf_gen/data/banner.png"
 CUSTOM_PAGE_SIZE = (304 * mm, 235 * mm)
+
+def seating_payload_digest(data: dict, user_id: str = 'system', template_name: str = 'default') -> str:
+    """Create hash including user template configuration"""
+    seating_data_normalized = json.dumps(data, sort_keys=True, separators=(',', ':'))
+    
+    if template_manager:
+        template_hash = template_manager.get_template_hash(user_id, template_name)
+        combined = f"{seating_data_normalized}|{user_id}|{template_name}|{template_hash}"
+    else:
+        # Fallback without template system
+        combined = seating_data_normalized
+    
+    return hashlib.sha256(combined.encode('utf-8')).hexdigest()
+
+def get_or_create_seating_pdf(data: dict, user_id: str = 'system', template_name: str = 'default', cache_dir: str = CACHE_DIR) -> str:
+    """Generate PDF with user-specific template and caching"""
+    if data is None:
+        raise ValueError("Seating data required")
+
+    digest = seating_payload_digest(data, user_id, template_name)
+    
+    # Create user-specific cache directory if template manager available
+    if template_manager and user_id != 'system':
+        user_cache_dir = os.path.join(cache_dir, str(user_id))
+        os.makedirs(user_cache_dir, exist_ok=True)
+        filename = os.path.join(user_cache_dir, f"seating_plan_{digest}.pdf")
+    else:
+        # Fallback to original behavior
+        os.makedirs(cache_dir, exist_ok=True)
+        filename = os.path.join(cache_dir, f"seating_plan_{digest}.pdf")
+
+    if not os.path.exists(filename):
+        print(f"🔄 Generating new PDF for user: {user_id}")
+        create_seating_pdf(filename=filename, data=data, user_id=user_id, template_name=template_name)
+    else:
+        print(f"♻️ Using cached PDF for user: {user_id}")
+    
+    return filename
 
 def process_seating_data(json_data):
     """Returns matrix of cell dicts: {'text': str, 'bg': color_or_None}"""
@@ -49,29 +101,6 @@ def process_seating_data(json_data):
             matrix[r][c] = {'text': content, 'bg': bg}
     return matrix
 
-def header_and_footer(c, doc):
-    c.saveState()
-    page_width, page_height = CUSTOM_PAGE_SIZE
-    BANNER_HEIGHT = 3.5 * cm
-    CONTENT_WIDTH = page_width - doc.leftMargin - doc.rightMargin
-    try:
-        c.drawImage(IMAGE_PATH,
-                    x=doc.leftMargin,
-                    y=page_height - doc.topMargin - 0.3 * cm,
-                    width=CONTENT_WIDTH,
-                    height=BANNER_HEIGHT,
-                    preserveAspectRatio=True)
-    except Exception:
-        c.setFont('Helvetica-Bold', 12)
-        c.drawCentredString(page_width / 2, page_height - doc.topMargin + 1.2 * cm,
-                            "Header image missing")
-    c.setFont('Helvetica', 9)
-    footer_x = page_width - doc.rightMargin
-    footer_y = doc.bottomMargin / 2
-    c.drawRightString(footer_x, footer_y + 8, "Dr. Dheeraj K. Dixit")
-    c.drawRightString(footer_x, footer_y, "Dept. Exam Coordinator")
-    c.restoreState()
-
 def format_cell_content(raw, style):
     if not raw.strip():
         return ''
@@ -82,9 +111,54 @@ def format_cell_content(raw, style):
         text = f"<b>{parts[0]}</b>"
     return Paragraph(text, style)
 
-def create_seating_pdf(filename="seat_plan_generated/seating_plan.pdf", data=None):
+def create_seating_pdf(filename="pdf_gen/seat_plan_generated/seating_plan.pdf", data=None, user_id: str = 'system', template_name: str = 'default'):
+    """Generate PDF using user's specific template or fallback to default"""
     if data is None:
         raise ValueError("Seating data required")
+    
+    # Load user's template configuration or use defaults
+    if template_manager:
+        template_config = template_manager.get_user_template(user_id, template_name)
+        print(f"📋 Using template for user {user_id}: {template_config.get('dept_name', 'Default')}")
+    else:
+        # Fallback template config
+        template_config = {
+            'dept_name': 'Department of Computer Science & Engineering',
+            'exam_details': 'Minor-II Examination (2025 Admitted), November 2025',
+            'seating_plan_title': 'Seating Plan',
+            'branch_text': 'Branch: B.Tech(CSE & CSD Ist year)',
+            'room_number': 'Room no. 103A',
+            'coordinator_name': 'Dr. Dheeraj K. Dixit',
+            'coordinator_title': 'Dept. Exam Coordinator',
+            'banner_image_path': IMAGE_PATH
+        }
+    
+    def header_and_footer(c, doc):
+        c.saveState()
+        page_width, page_height = CUSTOM_PAGE_SIZE
+        BANNER_HEIGHT = 3.5 * cm
+        CONTENT_WIDTH = page_width - doc.leftMargin - doc.rightMargin
+        
+        # Use template's banner image path
+        banner_path = template_config.get('banner_image_path', IMAGE_PATH)
+        try:
+            c.drawImage(banner_path,
+                        x=doc.leftMargin,
+                        y=page_height - doc.topMargin - 0.3 * cm,
+                        width=CONTENT_WIDTH,
+                        height=BANNER_HEIGHT,
+                        preserveAspectRatio=True)
+        except Exception:
+            c.setFont('Helvetica-Bold', 12)
+            c.drawCentredString(page_width / 2, page_height - doc.topMargin + 1.2 * cm,
+                                "Header image missing")
+        
+        c.setFont('Helvetica', 9)
+        footer_x = page_width - doc.rightMargin
+        footer_y = doc.bottomMargin / 2
+        c.drawRightString(footer_x, footer_y + 8, template_config.get('coordinator_name', 'Dr. Dheeraj K. Dixit'))
+        c.drawRightString(footer_x, footer_y, template_config.get('coordinator_title', 'Dept. Exam Coordinator'))
+        c.restoreState()
     
     seating_matrix = process_seating_data(data)
     metadata = data.get('metadata', {})
@@ -116,29 +190,35 @@ def create_seating_pdf(filename="seat_plan_generated/seating_plan.pdf", data=Non
     header_style.fontName = 'Helvetica-Bold'
 
     story.append(Spacer(0, 0.2 * cm))
+    
+    # Use template values
     dept_style = styles['Normal'].clone('Dept')
     dept_style.fontSize = 13
     dept_style.alignment = 1
-    story.append(Paragraph("<b>Department of Computer Science & Engineering</b>", dept_style))
+    story.append(Paragraph(f"<b>{template_config.get('dept_name')}</b>", dept_style))
+    
     story.append(Spacer(0, 0.15 * cm))
     exam_style = styles['Normal'].clone('Exam')
     exam_style.fontSize = 12
     exam_style.alignment = 1
-    story.append(Paragraph("Minor-II Examination (2025 Admitted), November 2025", exam_style))
+    story.append(Paragraph(template_config.get('exam_details'), exam_style))
+    
     title_style = styles['Heading4'].clone('Title')
     title_style.alignment = 1
     title_style.fontSize = 18
-    story.append(Paragraph("<b>Seating Plan</b>", title_style))
+    story.append(Paragraph(f"<b>{template_config.get('seating_plan_title')}</b>", title_style))
 
     br_style = styles['Normal'].clone('BR')
     br_style.fontSize = 12
     br_style.fontName = 'Helvetica-Bold'
-    branch = Paragraph("<b>Branch: B.Tech(CSE & CSD Ist year)</b>", br_style)
-    room = Paragraph("<b>Room no. 103A</b>", br_style)
+    
+    branch = Paragraph(f"<b>{template_config.get('branch_text')}</b>", br_style)
+    room = Paragraph(f"<b>{template_config.get('room_number')}</b>", br_style)
+    
     page_width = CUSTOM_PAGE_SIZE[0]
     content_width = page_width - doc.leftMargin - doc.rightMargin
 
-    room_text = "Room no. 103A"
+    room_text = template_config.get('room_number', 'Room no. 103A')
     room_width = stringWidth(room_text, "Helvetica-Bold", 12) + 10
     room_width = min(room_width, content_width)
     branch_col_width = content_width - room_width 
@@ -157,6 +237,7 @@ def create_seating_pdf(filename="seat_plan_generated/seating_plan.pdf", data=Non
     story.append(br_table)
     story.append(Spacer(0, 0.4 * cm))
 
+    # Rest of your existing table code stays the same
     if num_cols > 0 and num_rows > 0:
         table_content = []
         style_cmds = []
@@ -209,4 +290,5 @@ def create_seating_pdf(filename="seat_plan_generated/seating_plan.pdf", data=Non
         story.append(table)
 
     doc.build(story, onFirstPage=header_and_footer, onLaterPages=header_and_footer)
+    print(f"✅ PDF generated: {filename}")
     return filename
