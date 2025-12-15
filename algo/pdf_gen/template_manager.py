@@ -1,9 +1,9 @@
-# pdf_gen/template_manager.py
 import json
 import hashlib
 import os
 import sqlite3
 from datetime import datetime
+from .database import DATABASE_PATH
 
 # Simple secure_filename fallback
 def secure_filename(filename):
@@ -12,27 +12,47 @@ def secure_filename(filename):
     filename = re.sub(r'[^\w\s.-]', '', filename).strip()
     return re.sub(r'[-\s]+', '_', filename)
 
-class UserTemplateManager:
-    def __init__(self, db_path="pdf_templates.db"):
+class TemplateManager:
+    def __init__(self, db_path=DATABASE_PATH):
         self.db_path = db_path
-        self.upload_folder = "pdf_gen/data/user_uploads"
+        # Ensure base directory exists relative to this file
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.upload_folder = os.path.join(base_dir, "data", "user_uploads")
         os.makedirs(self.upload_folder, exist_ok=True)
         
-        # Initialize database
-        from .database import init_database
-        init_database()
+        # Initialize database tables on startup
+        try:
+            from .database import init_database
+            init_database()
+        except Exception as e:
+            print(f"⚠️ Warning: Could not init PDF database: {e}")
     
     def get_db_connection(self):
+        # Ensure directory exists to prevent connection errors
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
     
+    def _get_default_template(self):
+        """Fallback default template"""
+        return {
+            'dept_name': 'Department of Computer Science & Engineering',
+            'exam_details': 'Minor-II Examination (2025 Admitted), November 2025',
+            'seating_plan_title': 'Seating Plan',
+            'branch_text': 'Branch: B.Tech(CSE & CSD Ist year)',
+            'room_number': 'Room no. 103A',
+            'coordinator_name': 'Dr. Dheeraj K. Dixit',
+            'coordinator_title': 'Dept. Exam Coordinator',
+            'banner_image_path': 'pdf_gen/data/banner.png'
+        }
+
     def get_user_template(self, user_id, template_name='default'):
         """Get template for specific user, fallback to system default"""
-        conn = self.get_db_connection()
-        cursor = conn.cursor()
-        
         try:
+            conn = self.get_db_connection()
+            cursor = conn.cursor()
+            
             # Try user-specific template first
             cursor.execute('''
                 SELECT * FROM user_templates 
@@ -49,24 +69,26 @@ class UserTemplateManager:
                 ''')
                 result = cursor.fetchone()
             
+            conn.close()
+
             if result:
                 return dict(result)
             else:
                 return self._get_default_template()
             
+        except sqlite3.OperationalError:
+            print("⚠️ PDF DB table missing. Using default template.")
+            return self._get_default_template()
         except Exception as e:
             print(f"Template fetch error: {e}")
             return self._get_default_template()
-        finally:
-            cursor.close()
-            conn.close()
     
     def save_user_template(self, user_id, template_data, template_name='default'):
         """Save or update user template"""
-        conn = self.get_db_connection()
-        cursor = conn.cursor()
-        
         try:
+            conn = self.get_db_connection()
+            cursor = conn.cursor()
+            
             cursor.execute('''
                 INSERT OR REPLACE INTO user_templates (
                     user_id, template_name, dept_name, exam_details, 
@@ -92,11 +114,12 @@ class UserTemplateManager:
             
         except Exception as e:
             print(f"❌ Template save error: {e}")
-            conn.rollback()
-            raise e
+            if 'conn' in locals():
+                conn.rollback()
+            return False
         finally:
-            cursor.close()
-            conn.close()
+            if 'conn' in locals():
+                conn.close()
     
     def save_user_banner(self, user_id, file, template_name='default'):
         """Save user banner image"""
@@ -120,6 +143,7 @@ class UserTemplateManager:
         """Generate hash for template content (for caching)"""
         template = self.get_user_template(user_id, template_name)
         
+        # Only hash the relevant fields
         template_data = {
             'dept_name': template.get('dept_name'),
             'exam_details': template.get('exam_details'),
@@ -137,19 +161,6 @@ class UserTemplateManager:
     def _allowed_file(self, filename):
         allowed = {'png', 'jpg', 'jpeg', 'gif', 'bmp'}
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed
-    
-    def _get_default_template(self):
-        """Fallback default template"""
-        return {
-            'dept_name': 'Department of Computer Science & Engineering',
-            'exam_details': 'Minor-II Examination (2025 Admitted), November 2025',
-            'seating_plan_title': 'Seating Plan',
-            'branch_text': 'Branch: B.Tech(CSE & CSD Ist year)',
-            'room_number': 'Room no. 103A',
-            'coordinator_name': 'Dr. Dheeraj K. Dixit',
-            'coordinator_title': 'Dept. Exam Coordinator',
-            'banner_image_path': 'data/banner.png'
-        }
 
 # Global instance
-template_manager = UserTemplateManager()
+template_manager = TemplateManager()

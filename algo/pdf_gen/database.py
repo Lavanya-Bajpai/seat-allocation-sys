@@ -1,12 +1,14 @@
-# pdf_gen/database.py
 import sqlite3
 import os
 from datetime import datetime
 
-DATABASE_PATH = "pdf_templates.db"
+DATABASE_PATH = "pdf_gen/pdf_templates.db"
 
 def init_database():
     """Initialize SQLite database with user templates"""
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
+    
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     
@@ -38,7 +40,7 @@ def init_database():
     
     conn.commit()
     conn.close()
-    print("✅ Database initialized successfully!")
+    print(f"✅ PDF Template Database initialized at: {DATABASE_PATH}")
 
 def get_db_connection():
     """Get database connection with Row factory"""
