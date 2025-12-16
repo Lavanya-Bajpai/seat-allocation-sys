@@ -14,4 +14,40 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+    background-color: #0d1117; 
+  background-image: linear-gradient(180deg, #161b22, #0d1117);
+  color: #c9d1d9; 
+}
+
+#root {
+  min-height: 100vh;
+  width: 100%;
+  /* REMOVED: display: flex; justify-content: center; align-items: center; */ 
+  /* ADD back padding if needed, but usually the children handle it */
+}
+
+/* Frontend/src/index.css (Add this section) */
+
+:root {
+  /* Light Mode Input Variables */
+  --input-bg-color: #ffffff;
+  --input-text-color: #1f2937; /* gray-900 */
+  --input-placeholder-color: #9ca3af; /* gray-400 */
+  --input-border-color: #d1d5db; /* gray-300 */
+  --input-focus-ring-color: #4f46e5; /* indigo-600 */
+  --input-focus-ring-color-light: rgba(79, 70, 229, 0.25); /* Adjusted for light mode ring */
+}
+
+.dark {
+  /* Dark Mode Input Variables (When the 'dark' class is present) */
+  --input-bg-color: #374151; /* gray-700 */
+  --input-text-color: #ffffff; /* white */
+  --input-placeholder-color: #6b7280; /* gray-500 */
+  --input-border-color: #4b5563; /* gray-600 */
+  --input-focus-ring-color: #818cf8; /* indigo-400 */
+  --input-focus-ring-color-light: rgba(129, 140, 248, 0.3); /* Adjusted for dark mode ring */
+}
+
+.font-bogle {
+    font-family: 'BBH Bogle', sans-serif !important;
 }

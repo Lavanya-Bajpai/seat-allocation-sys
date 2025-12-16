@@ -550,7 +550,7 @@ function downloadPdfClientSide() {
       return (
         <div
           key={`${rIdx}-${cIdx}`}
-          className="p-2 border rounded bg-gray-50 flex flex-col items-center justify-center text-xs min-h-[84px] min-w-[84px]"
+          className="p-2 border rounded bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center text-xs min-h-[84px] min-w-[84px]"
         >
           &nbsp;
         </div>
@@ -560,10 +560,10 @@ function downloadPdfClientSide() {
       return (
         <div
           key={`${rIdx}-${cIdx}`}
-          className="p-3 min-w-[84px] min-h-[84px] rounded-lg flex flex-col items-center justify-center text-xs border-2 border-red-400 bg-red-100 shadow-md transition-all duration-200 overflow-hidden"
+          className="p-3 min-w-[84px] min-h-[84px] rounded-lg flex flex-col items-center justify-center text-xs border-2 border-red-400 dark:border-red-600 bg-red-100 dark:bg-red-900 shadow-md transition-all duration-200 overflow-hidden"
         >
-          <div className="font-bold text-red-800 text-sm">BROKEN</div>
-          <div className="text-[10px] text-red-700 mt-1">{seat.position}</div>
+          <div className="font-bold text-red-800 dark:text-red-300 text-sm">BROKEN</div>
+          <div className="text-[10px] text-red-700 dark:text-red-400 mt-1">{seat.position}</div>
         </div>
       );
     }
@@ -571,11 +571,11 @@ function downloadPdfClientSide() {
       return (
         <div
           key={`${rIdx}-${cIdx}`}
-          className="p-3 min-w-[84px] min-h-[84px] rounded-lg flex flex-col items-center justify-center text-xs border border-gray-300 bg-gray-100 shadow-md transition-all duration-200 overflow-hidden"
+          className="p-3 min-w-[84px] min-h-[84px] rounded-lg flex flex-col items-center justify-center text-xs border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 shadow-md transition-all duration-200 overflow-hidden"
         >
-          <div className="font-semibold text-gray-600 text-sm">Batch {seat.batch}</div>
-          <div className="font-bold text-gray-500 text-sm">UNALLOCATED</div>
-          <div className="text-[10px] text-gray-500">{seat.position}</div>
+          <div className="font-semibold text-gray-600 dark:text-gray-300 text-sm">Batch {seat.batch}</div>
+          <div className="font-bold text-gray-500 dark:text-gray-400 text-sm">UNALLOCATED</div>
+          <div className="text-[10px] text-gray-500 dark:text-gray-400">{seat.position}</div>
         </div>
       );
     }
@@ -583,69 +583,83 @@ function downloadPdfClientSide() {
     const label = seat.batch_label || (seat.batch ? `Batch ${seat.batch}` : "");
     const rn = seat.roll_number || "";
     const set = seat.paper_set || "";
-    const display = seat.display || (rn ? `${rn}${set}` : "UNALLOCATED");
+    // Note: Tailwind dark mode classes won't apply to inline `style={{ background: color }}`
+    // You should ensure the text color is legible regardless of the batch color.
+    // For now, we'll assume a dark text on the seat color, but add dark mode defaults for the seat itself.
+
     return (
       <div
         key={`${rIdx}-${cIdx}`}
-        className="p-3 min-w-[84px] min-h-[84px] rounded-lg flex flex-col items-center justify-center text-xs border border-gray-300 shadow-md transition-all duration-200 overflow-hidden"
+        // Added dark:border-gray-500 for consistency
+        className="p-3 min-w-[84px] min-h-[84px] rounded-lg flex flex-col items-center justify-center text-xs border border-gray-300 dark:border-gray-500 shadow-md transition-all duration-200 overflow-hidden"
         style={{ background: color }}
       >
-        <div className="text-[11px] font-semibold text-center">{label}</div>
-        <div className="text-sm font-bold break-words text-center mt-1">{rn}</div>
-        {set && <div className="text-[10px] opacity-80 mt-1">Set: {set}</div>}
-        <div className="text-[10px] opacity-70 mt-1">{seat.position}</div>
+        {/* Force dark text for readability over background color */}
+        <div className="text-[11px] font-semibold text-center text-gray-900">{label}</div>
+        <div className="text-sm font-bold break-words text-center mt-1 text-gray-900">{rn}</div>
+        {set && <div className="text-[10px] opacity-80 mt-1 text-gray-800">Set: {set}</div>}
+        <div className="text-[10px] opacity-70 mt-1 text-gray-800">{seat.position}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white p-6">
+    // MAIN WRAPPER: Solid, theme-aware background
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-6">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-center mb-6">Seating Arrangement — Allocation</h1>
+        {/* MAIN HEADING TEXT COLOR */}
+        <h1 className="text-3xl font-bold text-center mb-6 text-gray-800 dark:text-white">Seating Arrangement — Allocation</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <div className="lg:col-span-2 bg-white rounded-xl shadow p-6">
+          {/* INPUTS PANEL */}
+          {/* INPUT PANEL BACKGROUND */}
+          <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
               <div>
-                <label className="block text-sm font-medium text-gray-700">Rows</label>
-                <input type="number" className="mt-1 w-full p-2 border rounded" value={rows} onChange={(e)=>setRows(Math.max(1, parseInt(e.target.value||1)))} />
+                {/* LABEL TEXT COLOR */}
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Rows</label>
+                {/* INPUT FIELD STYLES */}
+                <input type="number" className="mt-1 w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={rows} onChange={(e)=>setRows(Math.max(1, parseInt(e.target.value||1)))} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Columns</label>
-                <input type="number" className="mt-1 w-full p-2 border rounded" value={cols} onChange={(e)=>setCols(Math.max(1, parseInt(e.target.value||1)))} />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Columns</label>
+                <input type="number" className="mt-1 w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={cols} onChange={(e)=>setCols(Math.max(1, parseInt(e.target.value||1)))} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Number of Batches</label>
-                <input type="number" className="mt-1 w-full p-2 border rounded" value={numBatches} onChange={(e)=>setNumBatches(Math.max(1, Math.min(50, parseInt(e.target.value||1))))} />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Number of Batches</label>
+                <input type="number" className="mt-1 w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={numBatches} onChange={(e)=>setNumBatches(Math.max(1, Math.min(50, parseInt(e.target.value||1))))} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Block Width (cols)</label>
-                <input type="number" className="mt-1 w-full p-2 border rounded" value={blockWidth} onChange={(e)=>setBlockWidth(Math.max(1, parseInt(e.target.value||1)))} />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Block Width (cols)</label>
+                <input type="number" className="mt-1 w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" value={blockWidth} onChange={(e)=>setBlockWidth(Math.max(1, parseInt(e.target.value||1)))} />
               </div>
 
               <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Broken Seats (row-col)</label>
-                <input type="text" className="mt-1 w-full p-2 border rounded" placeholder="e.g., 1-3,2-1" value={brokenSeats} onChange={(e)=>setBrokenSeats(e.target.value)} />
-                <p className="text-xs text-gray-500 mt-1">Separate entries with commas; rows/cols are 1-based.</p>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Broken Seats (row-col)</label>
+                <input type="text" className="mt-1 w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="e.g., 1-3,2-1" value={brokenSeats} onChange={(e)=>setBrokenSeats(e.target.value)} />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Separate entries with commas; rows/cols are 1-based.</p>
               </div>
 
               <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Batch Student Counts (optional)</label>
-                <input type="text" className="mt-1 w-full p-2 border rounded" placeholder="1:35,2:30,3:25" value={batchStudentCounts} onChange={(e)=>setBatchStudentCounts(e.target.value)} />
-                <p className="text-xs text-gray-500 mt-1">Format: batchIndex:count, separated by commas. Shows unallocated if total &lt; available seats</p>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Batch Student Counts (optional)</label>
+                <input type="text" className="mt-1 w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="1:35,2:30,3:25" value={batchStudentCounts} onChange={(e)=>setBatchStudentCounts(e.target.value)} />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Format: batchIndex:count, separated by commas. Shows unallocated if total &lt; available seats</p>
               </div>
 
               <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Per-batch Start Roll Strings (optional)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Per-batch Start Roll Strings (optional)</label>
                 <div className="space-y-2">
                   {Array.from({ length: numBatches }).map((_, i) => {
                     const idx = i + 1;
                     return (
                       <div key={idx}>
-                        <label className="text-xs text-gray-600">Batch {idx}</label>
+                        {/* INPUT LABEL TEXT COLOR */}
+                        <label className="text-xs text-gray-600 dark:text-gray-400">Batch {idx}</label>
+                        {/* INPUT FIELD STYLES */}
                         <input
                           type="text"
-                          className="w-full p-2 border rounded"
+                          className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                           placeholder={`e.g., BTCS24O${1000 + (idx - 1) * 100}`}
                           value={batchStartRolls[idx] || ""}
                           onChange={(e) => setBatchStartRolls((prev) => ({ ...prev, [idx]: e.target.value }))}
@@ -654,40 +668,41 @@ function downloadPdfClientSide() {
                     );
                   })}
                 </div>
-                <p className="text-xs text-gray-500 mt-2">Format: batchIndex:ROLLSTRING, separated by commas. Example: 1:BTCS24O1135,2:BTCD24O2001</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Format: batchIndex:ROLLSTRING, separated by commas. Example: 1:BTCS24O1135,2:BTCD24O2001</p>
               </div>
 
               <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Batch Colors (optional)</label>
-                <input type="text" className="mt-1 w-full p-2 border rounded" placeholder="1:#DBEAFE,2:#DCFCE7" value={batchColorsInput} onChange={(e)=>setBatchColorsInput(e.target.value)} />
-                <p className="text-xs text-gray-500 mt-1">Format: batchIndex:#HEXCOLOR, separated by commas</p>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Batch Colors (optional)</label>
+                <input type="text" className="mt-1 w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="1:#DBEAFE,2:#DCFCE7" value={batchColorsInput} onChange={(e)=>setBatchColorsInput(e.target.value)} />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Format: batchIndex:#HEXCOLOR, separated by commas</p>
               </div>
 
               <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Batch Labels (optional)</label>
-                <input type="text" className="mt-1 w-full p-2 border rounded" placeholder="1:CSE,2:ECE,3:IT" value={batchLabelsInput} onChange={(e)=>setBatchLabelsInput(e.target.value)} />
-                <p className="text-xs text-gray-500 mt-1">Human readable branch names. Format: batchIndex:LABEL</p>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Batch Labels (optional)</label>
+                <input type="text" className="mt-1 w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="1:CSE,2:ECE,3:IT" value={batchLabelsInput} onChange={(e)=>setBatchLabelsInput(e.target.value)} />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Human readable branch names. Format: batchIndex:LABEL</p>
               </div>
 
               <div className="col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Fill Batches By Column</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fill Batches By Column</label>
                 <div className="flex items-center gap-3">
-                  <input type="checkbox" checked={batchByColumn} onChange={(e)=>setBatchByColumn(e.target.checked)} className="h-5 w-5" />
-                  <span className="text-sm text-gray-600">Column-major assignment</span>
+                  <input type="checkbox" checked={batchByColumn} onChange={(e)=>setBatchByColumn(e.target.checked)} className="h-5 w-5 text-blue-600 focus:ring-blue-500 dark:text-blue-500 dark:focus:ring-blue-400" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Column-major assignment</span>
                 </div>
               </div>
 
               <div className="col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Enforce No Adjacent Same Batch</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Enforce No Adjacent Same Batch</label>
                 <div className="flex items-center gap-3">
-                  <input type="checkbox" checked={enforceNoAdjacentBatches} onChange={(e)=>setEnforceNoAdjacentBatches(e.target.checked)} className="h-5 w-5" />
-                  <span className="text-sm text-gray-600">Optional constraint</span>
+                  <input type="checkbox" checked={enforceNoAdjacentBatches} onChange={(e)=>setEnforceNoAdjacentBatches(e.target.checked)} className="h-5 w-5 text-blue-600 focus:ring-blue-500 dark:text-blue-500 dark:focus:ring-blue-400" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Optional constraint</span>
                 </div>
               </div>
 
               <div className="col-span-1 md:col-span-2 mt-4">
                 <div className="flex gap-3 flex-wrap items-center">
-                  <button onClick={generate} disabled={loading} className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2 rounded font-medium transition"> 
+                  {/* BUTTONS: Adjusted hover/focus colors for dynamic themes */}
+                  <button onClick={generate} disabled={loading} className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-600 text-white px-6 py-2 rounded font-medium transition"> 
                     {loading ? "Generating..." : "Generate Chart"}
                   </button>
                   
@@ -695,7 +710,7 @@ function downloadPdfClientSide() {
                   <button 
                     onClick={downloadPdf}
                     disabled={!webData || pdfLoading}
-                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-2 rounded font-medium transition inline-flex items-center gap-2"
+                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 dark:disabled:bg-gray-600 text-white px-6 py-2 rounded font-medium transition inline-flex items-center gap-2"
                   >
                     {pdfLoading ? (
                       <>
@@ -717,29 +732,29 @@ function downloadPdfClientSide() {
                   <div className="relative group">
                     <button 
                       disabled={!webData || pdfLoading}
-                      className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white px-4 py-2 rounded font-medium transition"
+                      className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 dark:disabled:bg-gray-600 text-white px-4 py-2 rounded font-medium transition"
                       title="PDF Options"
                     >
                       ⚙️
                     </button>
                     
-                    <div className="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-20">
+                    <div className="absolute left-0 mt-2 w-56 bg-white dark:bg-gray-700 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-20">
                       <button
                         onClick={downloadPdfClientSide}
                         disabled={!webData || pdfLoading}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-t-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-t-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <div className="font-semibold text-sm text-gray-800">🌐 Client-Side PDF</div>
-                        <div className="text-xs text-gray-500">Fast, browser-based (html2pdf)</div>
+                        <div className="font-semibold text-sm text-gray-800 dark:text-gray-200">🌐 Client-Side PDF</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Fast, browser-based (html2pdf)</div>
                       </button>
-                      <div className="border-t border-gray-100"></div>
+                      <div className="border-t border-gray-100 dark:border-gray-600"></div>
                       <button
                         onClick={downloadPdfServerSide}
                         disabled={!webData || pdfLoading}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-b-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-b-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <div className="font-semibold text-sm text-gray-800">🖥️ Server-Side PDF</div>
-                        <div className="text-xs text-gray-500">Professional (ReportLab)</div>
+                        <div className="font-semibold text-sm text-gray-800 dark:text-gray-200">🖥️ Server-Side PDF</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Professional (ReportLab)</div>
                       </button>
                     </div>
                   </div>
@@ -752,25 +767,26 @@ function downloadPdfClientSide() {
 
               <div className="col-span-1 md:col-span-2">
                 <label className="inline-flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={useDemoDb} onChange={(e)=>setUseDemoDb(e.target.checked)} className="h-5 w-5" />
-                  <span className="text-sm text-gray-700">Use demo DB for enrollments/labels</span>
+                  <input type="checkbox" checked={useDemoDb} onChange={(e)=>setUseDemoDb(e.target.checked)} className="h-5 w-5 text-blue-600 focus:ring-blue-500 dark:text-blue-500 dark:focus:ring-blue-400" />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Use demo DB for enrollments/labels</span>
                 </label>
               </div>
             
 
-              {error && <div className="col-span-1 md:col-span-2 mt-2 text-red-600 font-medium text-sm">{error}</div>}
+              {error && <div className="col-span-1 md:col-span-2 mt-2 text-red-600 dark:text-red-400 font-medium text-sm">{error}</div>}
 
               {/* DANGER ZONE - DB RESET */}
-                <div className="mt-8 pt-6 border-t border-gray-200">
+                <div className="col-span-1 md:col-span-2 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between">
                     <div>
-                        <h3 className="text-sm font-bold text-red-600">Danger Zone</h3>
-                        <p className="text-xs text-gray-500">Resetting will clear all student data and uploads.</p>
+                        <h3 className="text-sm font-bold text-red-600 dark:text-red-400">Danger Zone</h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Resetting will clear all student data and uploads.</p>
                     </div>
+                    {/* RESET BUTTON STYLES */}
                     <button 
                         onClick={handleResetDatabase} 
                         disabled={resetting}
-                        className="bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-4 py-2 rounded text-sm font-semibold transition disabled:opacity-50"
+                        className="bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-700 hover:bg-red-100 dark:hover:bg-red-800 px-4 py-2 rounded text-sm font-semibold transition disabled:opacity-50"
                     >
                         {resetting ? "Resetting..." : "Reset Database"}
                     </button>
@@ -779,7 +795,8 @@ function downloadPdfClientSide() {
             </div>
             </div>
 
-          <div className="bg-white rounded-xl shadow p-6 h-fit">
+          {/* SUMMARY PANEL BACKGROUND AND TEXT COLOR */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 h-fit text-gray-800 dark:text-white">
             <h3 className="font-semibold mb-3">Quick Summary</h3>
             <div className="space-y-2 text-sm">
               <div>Total rows: <strong>{rows}</strong></div>
@@ -789,30 +806,37 @@ function downloadPdfClientSide() {
               <div>Using demo DB: <strong>{useDemoDb ? "Yes" : "No"}</strong></div>
             </div>
             <div className="mt-4">
-              <button onClick={()=>{ setRows(8); setCols(10); setNumBatches(3); setBlockWidth(3); }} className="text-xs text-gray-600 hover:underline">Reset to defaults</button>
+              <button onClick={()=>{ setRows(8); setCols(10); setNumBatches(3); setBlockWidth(3); }} className="text-xs text-gray-600 dark:text-gray-400 hover:underline">Reset to defaults</button>
             </div>
           </div>
         </div>
 
         {/* Seating Chart */}
-        <div ref={chartRef} className="bg-white rounded-xl shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Seating Chart</h2>
+        {/* SEATING CHART PANEL BACKGROUND AND TEXT COLOR */}
+        <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Seating Chart</h2>
 
-          {!webData && <div className="text-gray-500">No seating generated yet. Click "Generate Chart".</div>}
+          {!webData && <div className="text-gray-500 dark:text-gray-400">No seating generated yet. Click "Generate Chart".</div>}
 
           {webData && (
             <>
               <div className="mb-3">
                 {webData.validation && webData.validation.is_valid ? (
-                  <div className="text-green-700 font-medium">All constraints satisfied</div>
+                  <div className="text-green-700 dark:text-green-400 font-medium">All constraints satisfied</div>
                 ) : (
-                  <div className="text-red-600 font-medium">Violations detected — open constraints to inspect</div>
+                  <div className="text-red-600 dark:text-red-400 font-medium">Violations detected — open constraints to inspect</div>
                 )}
               </div>
 
-              <div className="overflow-auto">
-                <div style={{ display: "grid", gridTemplateColumns: `repeat(${webData.metadata?.cols || cols}, minmax(88px, 1fr))`, gap: 12 }}>
-                  {webData.seating.map((row, rIdx)=> row.map((seat, cIdx) => renderSeat(seat, rIdx, cIdx)))}
+              {/* SEATING GRID CONTAINER (Added dark:bg-gray-900 for consistent dark area) */}
+              <div className="overflow-auto p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+                  gap: '6px',
+                  // Ensure inner container uses the background of the wrapper
+                }}>
+                  {webData.seating.flat().map(renderSeat)}
                 </div>
               </div>
             </>
@@ -822,4 +846,5 @@ function downloadPdfClientSide() {
     </div>
   );
 };
+
 export default AllocationPage;

@@ -20,7 +20,8 @@ const Navbar = ({ currentPage, setCurrentPage }) => {
     { name: 'Layout', page: 'layout' },
     { name: 'Profile', page: 'profile' },
     { name: 'Feedback', page: 'feedback'},
-    { name: 'Aboutus', page: 'aboutus'}
+    { name: 'About us', page: 'aboutus'},
+    { name: 'Template Editor ', page: 'template-editor'}
   ] : [];
 
   return (

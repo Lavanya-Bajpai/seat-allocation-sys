@@ -1,5 +1,6 @@
 import sys
 import os
+from datetime import datetime
 import time
 import io  # ✅ FIXED: Added missing import
 import json
@@ -8,9 +9,11 @@ from pathlib import Path
 from functools import wraps
 from typing import Dict, List, Tuple
 
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file,render_template_string,session,render_template
 from flask_cors import CORS
 
+from pdf_gen.pdf_generation import get_or_create_seating_pdf
+from pdf_gen.template_manager import template_manager
 # --------------------------------------------------
 # Optional Modules (PDF & Auth)
 # --------------------------------------------------
@@ -353,19 +356,124 @@ def constraints_status():
     algo.generate_seating()
     return jsonify(algo.get_constraints_status())
 
-@app.route("/api/generate-pdf", methods=["POST"])
+# ============================================================================
+#   PDF GENERATION CONNECTION
+# (Unchanged)
+# ============================================================================
+@app.route('/template-editor')
+def template_editor():
+    """Serve the template editor interface (from the templates folder)"""
+    # NOTE: Since we changed Flask configuration, if 'template_editor.html'
+    # is still a separate file, you should ensure it is in the 'templates' folder
+    # or handle it as part of the React build. 
+    # If the TemplateEditor is a React component, this route should also use render_template('index.html')
+    # and let React Router handle the /template-editor path.
+    return render_template('template_editor.html')
+
+# ... (rest of the PDF routes are unchanged)
+
+@app.route('/api/template-config', methods=['GET', 'POST'])
+def manage_template():
+    # ... (function body unchanged)
+    user_id = 'test_user'
+    template_name = request.args.get('template_name', 'default')
+    
+    if request.method == 'GET':
+        try:
+            template = template_manager.get_user_template(user_id, template_name)
+            return jsonify({
+                'success': True,
+                'template': template,
+                'user_id': user_id
+            })
+        except Exception as e:
+            return jsonify({'error': f'Failed to load template: {str(e)}'}), 500
+    
+    elif request.method == 'POST':
+        try:
+            template_data = request.form.to_dict()
+            print(f"📝 Updating template for test user: {list(template_data.keys())}")
+            
+            # Handle banner image upload
+            if 'bannerImage' in request.files:
+                file = request.files['bannerImage']
+                if file and file.filename:
+                    image_path = template_manager.save_user_banner(user_id, file, template_name)
+                    if image_path:
+                        template_data['banner_image_path'] = image_path
+                        print(f"🖼️ Banner uploaded: {image_path}")
+            
+            # Save template
+            template_manager.save_user_template(user_id, template_data, template_name)
+            
+            return jsonify({
+                'success': True,
+                'message': 'Template updated successfully',
+                'template': template_manager.get_user_template(user_id, template_name)
+            })
+            
+        except Exception as e:
+            print(f"❌ Template update error: {e}")
+            return jsonify({'error': f'Failed to update template: {str(e)}'}), 500
+
+
+# Updated PDF generation route (modify your existing one)
+@app.route('/api/generate-pdf', methods=['POST'])
 def generate_pdf():
+    # ... (function body unchanged)
     try:
-        data = request.get_json(force=True)
-        if not data or "seating" not in data: return jsonify({"error": "Invalid data"}), 400
-        output_dir = BASE_DIR / "seat_plan_generated"
-        output_dir.mkdir(exist_ok=True)
-        filename = output_dir / f"seating_{int(time.time())}.pdf"
+        data = request.get_json()
+        if not data or 'seating' not in data:
+            return jsonify({"error": "Invalid seating data"}), 400
         
-        if create_seating_pdf is None: return jsonify({"error": "PDF module missing"}), 500
+        # Use test user for templates, but keep backward compatibility
+        user_id = 'test_user'
+        template_name = request.args.get('template_name', 'default')
         
-        pdf_path = create_seating_pdf(filename=str(filename), data=data)
-        return send_file(pdf_path, as_attachment=True, download_name=filename.name, mimetype="application/pdf")
+        print(f"📊 Generating PDF for test user with template: {template_name}")
+        
+        # Uses user-specific templates
+        pdf_path = get_or_create_seating_pdf(data, user_id=user_id, template_name=template_name)
+        
+        return send_file(
+            pdf_path,
+            as_attachment=True,
+            download_name=f"seating_plan_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+        )
+    except Exception as e:
+        print(f"❌ PDF generation error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# Test PDF generation with sample data
+@app.route('/api/test-pdf', methods=['GET'])
+def test_pdf():
+    # ... (function body unchanged)
+    user_id = 'test_user'
+    template_name = request.args.get('template_name', 'default')
+    
+    sample_data = {
+        'seating': [
+            [
+                {'roll_number': '2021001', 'paper_set': 'A', 'color': '#e3f2fd'},
+                {'roll_number': '2021002', 'paper_set': 'B', 'color': '#f3e5f5'},
+                {'roll_number': '2021003', 'paper_set': 'A', 'color': '#e8f5e8'}
+            ],
+            [
+                {'roll_number': '2021004', 'paper_set': 'B', 'color': '#fff3e0'},
+                {'is_broken': True, 'display': 'BROKEN', 'color': '#ffebee'},
+                {'roll_number': '2021005', 'paper_set': 'A', 'color': '#e3f2fd'}
+            ]
+        ],
+        'metadata': {'rows': 2, 'cols': 3, 'blocks': 1, 'block_width': 3}
+    }
+    
+    try:
+        pdf_path = get_or_create_seating_pdf(sample_data, user_id=user_id, template_name=template_name)
+        return send_file(
+            pdf_path,
+            as_attachment=True,
+            download_name=f"test_seating_plan.pdf"
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 # --------------------------------------------------
